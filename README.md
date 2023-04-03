@@ -12,7 +12,7 @@ This Python code connects to the [Child Diary API](https://childdiary.net/), ret
 ## Setup
 
 1. Clone the repository to your local machine.
-2. Install the required libraries using `pip`.
+2. Install the required libraries using `pip install -r requirements.txt`.
 3. Create a Telegram bot and obtain its token.
 4. Create a Telegram chat and obtain its ID.
 5. Create a Child Diary account and obtain your login credentials.
