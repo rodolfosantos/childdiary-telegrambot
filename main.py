@@ -1,67 +1,86 @@
-import requests
-import json
-import telegram
-import asyncio
-import time
-from bs4 import BeautifulSoup
 import os
+import json
+import asyncio
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
+import requests
+import telegram
 
-CD_EMAIL = os.environ["CD_EMAIL"]
-CD_PASSWORD = os.environ["CD_PASSWORD"]
-TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
-TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+CD_EMAIL = os.environ.get("CD_EMAIL")
+CD_PASSWORD = os.environ.get("CD_PASSWORD")
+TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 
 async def main():
+    try:
+        # Login
+        payload = {
+            "Username": CD_EMAIL,
+            "Password": CD_PASSWORD,
+            "RememberMe": True
+        }
+        headers = {"content-type": "application/json;charset=UTF-8"}
 
-  payload = "{\"Username\":\""+CD_EMAIL+"\",\"Password\":\""+CD_PASSWORD+"\",\"RememberMe\":true}"
-  headers = {
-    'content-type': 'application/json;charset=UTF-8'
-  }
+        with requests.Session() as session:
+            response = session.post(
+                "https://app.childdiary.net/api/Account/login",
+                headers=headers,
+                data=json.dumps(payload),
+            )
+            response.raise_for_status()
 
-  response = requests.request("POST", "https://app.childdiary.net/api/Account/login", headers=headers, data=payload)
-  cookie = response.headers['Set-Cookie']
+            # Get Entries
+            headers1 = {
+                "accept": "application/json, text/plain, */*",
+                "cookie": response.headers["Set-Cookie"],
+            }
 
-  #Get Entries
+            while True:
+                response1 = session.get(
+                    "https://app.childdiary.net/api/Entries?count=1&page=0&type=All",
+                    headers=headers1,
+                )
+                response1.raise_for_status()
+                responseJSON1 = response1.json()
 
-  headers1 = {
-    'accept': 'application/json, text/plain, */*',
-    'cookie': cookie
-  }
+                createdOn = responseJSON1["Entries"][0]["CreatedOn"]
+                createdOnDateTime = datetime.strptime(
+                    createdOn, "%Y-%m-%dT%H:%M:%S.%fZ"
+                )
 
-  while(True):
+                current_datetime = datetime.now()
+                oneOurAgo = current_datetime - timedelta(hours=1)
 
-    response1 = requests.request("GET", "https://app.childdiary.net/api/Entries?count=1&page=0&type=All", headers=headers1, data={})
-    responseJSON1 = json.loads(response1.text)
+                # Check if the given datetime is greater than one hour ago
+                if createdOnDateTime < oneOurAgo:
+                    print("No new entries")
+                    print("Sleeping for 1 hour")
+                    await asyncio.sleep(3600)
+                    continue
 
-    createdOn = responseJSON1['Entries'][0]['CreatedOn']
-    createdOnDateTime = datetime.strptime(createdOn, '%Y-%m-%dT%H:%M:%S.%fZ')
+                # Publish to Telegram
+                bot = telegram.Bot(TELEGRAM_TOKEN)
+                async with bot:
+                    for entry in responseJSON1["Entries"]:
+                        print("New entry found, publishing to Telegram!")
 
-    current_datetime = datetime.now()
-    oneOurAgo = current_datetime - timedelta(hours=1)
+                        htmlText = BeautifulSoup(
+                            entry["Text"], features="html.parser"
+                        )
+                        for media in entry["Medias"]:
+                            await bot.send_photo(TELEGRAM_CHAT_ID, media["Url"])
 
-    # check if the given datetime is greater than one hour ago
-    if createdOnDateTime < oneOurAgo:
-      print('No new entries')
-      print('Sleeping for 1 hour')
-      time.sleep(3600)
-      continue;
+                        await bot.sendMessage(
+                            TELEGRAM_CHAT_ID,
+                            f"{entry['Creator']['Description']}: {htmlText.get_text()}",
+                        )
 
-    #publish to telegram
-    bot = telegram.Bot(TELEGRAM_TOKEN)
-    async with bot:
-        for entry in responseJSON1['Entries']:
-          print('New entry found, publishing to telegram!')
+                await asyncio.sleep(3600)
 
-          htmlText = BeautifulSoup(entry['Text'], features="html.parser")
-          for media in entry['Medias']:
-              await bot.send_photo(TELEGRAM_CHAT_ID, media['Url'])
-
-          await bot.sendMessage(TELEGRAM_CHAT_ID, entry['Creator']['Description']+': '+ htmlText.get_text())
-    
-    time.sleep(3600)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
