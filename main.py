@@ -6,10 +6,10 @@ from bs4 import BeautifulSoup
 import requests
 import telegram
 
-CD_EMAIL = os.environ.get("CD_EMAIL")
-CD_PASSWORD = os.environ.get("CD_PASSWORD")
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+CD_EMAIL = os.getenv("CD_EMAIL")
+CD_PASSWORD = os.getenv("CD_PASSWORD")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 
 async def main():
@@ -71,10 +71,8 @@ async def main():
                         for media in entry["Medias"]:
                             await bot.send_photo(TELEGRAM_CHAT_ID, media["Url"])
 
-                        await bot.sendMessage(
-                            TELEGRAM_CHAT_ID,
-                            f"{entry['Creator']['Description']}: {htmlText.get_text()}",
-                        )
+                        message = f"{entry['Creator']['Description']}: {htmlText.get_text()}"
+                        await bot.sendMessage(TELEGRAM_CHAT_ID, message)
 
                 await asyncio.sleep(3600)
 
