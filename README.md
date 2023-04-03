@@ -1,6 +1,6 @@
 # Child Diary Telegram Bot
 
-This Python code connects to the Child Diary API, retrieves the latest entry, and publishes it to a Telegram chat. The code is designed to run indefinitely, checking for new entries every hour.
+This Python code connects to the [Child Diary API](https://childdiary.net/), retrieves the latest entry, and publishes it to a Telegram chat. The code is designed to run indefinitely, checking for new entries every hour.
 
 ## Requirements
 
