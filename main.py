@@ -42,7 +42,7 @@ async def main():
     oneOurAgo = current_datetime - timedelta(hours=1)
 
     # check if the given datetime is greater than one hour ago
-    if createdOnDateTime > oneOurAgo:
+    if createdOnDateTime < oneOurAgo:
       print('No new entries')
       print('Sleeping for 1 hour')
       time.sleep(3600)
